@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, email, displayName, role, status, createdAt
+    //
+    // Collection: medicines
+    // Fields: id, name, batchNumber, mfgDate, expiryDate, manufacturerUid, createdAt
+    //
+    // Collection: articles
+    // Fields: id, title, content, authorUid, medicineId, status, createdAt
+    //
+    // Collection: scans
+    // Fields: id, medicineId, scannedAt, isAuthentic
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "imtiazhaque413@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isApprovedManufacturer() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manufacturer' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'status']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['public', 'manufacturer', 'admin'] &&
+             data.status in ['pending', 'approved', 'suspended'];
+    }
+
+    function isValidMedicine(data) {
+      return data.keys().hasAll(['id', 'name', 'batchNumber', 'mfgDate', 'expiryDate', 'manufacturerUid']) &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.batchNumber is string &&
+             data.manufacturerUid == request.auth.uid;
+    }
+
+    function isValidArticle(data) {
+      return data.keys().hasAll(['id', 'title', 'content', 'authorUid', 'status']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.content is string && data.content.size() < 50000 &&
+             data.authorUid == request.auth.uid &&
+             data.status in ['private', 'public'];
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && 
+                      request.resource.data.role == 'manufacturer' && 
+                      request.resource.data.status == 'pending' &&
+                      isValidUser(request.resource.data);
+      allow update: if isAdmin() || (isOwner(userId) && 
+                      request.resource.data.role == resource.data.role &&
+                      request.resource.data.status == resource.data.status &&
+                      isValidUser(request.resource.data));
+    }
+
+    match /medicines/{medicineId} {
+      allow read: if true; // Public for verification
+      allow create: if (isApprovedManufacturer() || isAdmin()) && isValidMedicine(request.resource.data);
+      allow update, delete: if isAdmin() || (isApprovedManufacturer() && resource.data.manufacturerUid == request.auth.uid && isValidMedicine(request.resource.data));
+    }
+
+    match /articles/{articleId} {
+      allow get: if true; // Publicly accessible via direct link or QR
+      allow list: if isAuthenticated() && (isOwner(resource.data.authorUid) || isAdmin());
+      allow create: if (isApprovedManufacturer() || isAdmin()) && isValidArticle(request.resource.data);
+      allow update, delete: if isAdmin() || (isApprovedManufacturer() && resource.data.authorUid == request.auth.uid && isValidArticle(request.resource.data));
+    }
+
+    match /scans/{scanId} {
+      allow create: if true; // Public scanning
+      allow read: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user profile with roles and approval status.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["public", "manufacturer", "admin"] },
+        "status": { "type": "string", "enum": ["pending", "approved", "suspended"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "status"]
+    },
+    "Medicine": {
+      "title": "Medicine",
+      "description": "Pharmaceutical product metadata associated with a QR code.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "batchNumber": { "type": "string" },
+        "mfgDate": { "type": "string", "format": "date" },
+        "expiryDate": { "type": "string", "format": "date" },
+        "manufacturerUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "batchNumber", "mfgDate", "expiryDate", "manufacturerUid"]
+    },
+    "Article": {
+      "title": "Article",
+      "description": "Rich text content or product information published by manufacturers or admins.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "medicineId": { "type": "string" },
+        "status": { "type": "string", "enum": ["private", "public"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "content", "authorUid", "status"]
+    },
+    "Scan": {
+      "title": "Scan",
+      "description": "Record of a QR code scan event.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "medicineId": { "type": "string" },
+        "scannedAt": { "type": "string", "format": "date-time" },
+        "isAuthentic": { "type": "boolean" }
+      },
+      "required": ["id", "scannedAt", "isAuthentic"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and permissions."
+    },
+    "/medicines/{medicineId}": {
+      "schema": "Medicine",
+      "description": "Medicine product records."
+    },
+    "/articles/{articleId}": {
+      "schema": "Article",
+      "description": "Published articles and product info."
+    },
+    "/scans/{scanId}": {
+      "schema": "Scan",
+      "description": "Audit log of scan events."
+    }
+  }
+}

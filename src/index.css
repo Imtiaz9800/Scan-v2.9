@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+#reader__scan_region img {
+  margin: 0 auto;
+  display: block;
+}
+
+#html5-qrcode-anchor-scan-type-change {
+  display: inline-block;
+  background-color: #8b5cf6; /* violet-500 */
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem; /* rounded-2xl */
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background-color 0.2s;
+}
+
+#html5-qrcode-button-camera-permission {
+  background-color: #8b5cf6; /* violet-500 */
+  color: white;
+  width: 241px;
+  height: 80px;
+  border-radius: 1rem; /* rounded-2xl */
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+
+#html5-qrcode-button-camera-permission:hover {
+  background-color: #7c3aed; /* violet-600 */
+}

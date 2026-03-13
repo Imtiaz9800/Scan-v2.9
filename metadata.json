@@ -1,0 +1,7 @@
+{
+  "name": "Remix: ScanRx trail2.3",
+  "description": "A specialized QR code generation and verification platform for pharmaceutical products, ensuring authenticity through a closed-loop verification process.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
