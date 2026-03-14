@@ -65,11 +65,10 @@ export default function Medicines() {
 
   const generateQR = async (medId: string, options = qrOptions) => {
     setActiveMedId(medId);
-    const encryptedId = encodeURIComponent(encryptMedicineId(medId));
-    const url = `${window.location.origin}/verify/${encryptedId}`;
+    const encryptedPayload = encryptMedicineId(medId);
     
     // Generate PNG for preview
-    const qrPng = await QRCode.toDataURL(url, { 
+    const qrPng = await QRCode.toDataURL(encryptedPayload, { 
       width: options.width, 
       errorCorrectionLevel: options.errorCorrectionLevel,
       margin: 2 
@@ -77,7 +76,7 @@ export default function Medicines() {
     setQrPreview(qrPng);
 
     // Generate SVG for high-quality download
-    const svgString = await QRCode.toString(url, {
+    const svgString = await QRCode.toString(encryptedPayload, {
       type: 'svg',
       width: options.width,
       errorCorrectionLevel: options.errorCorrectionLevel,

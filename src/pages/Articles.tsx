@@ -3,7 +3,7 @@ import { AuthContext } from '../components/Layout';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot, doc, serverTimestamp, deleteDoc, setDoc } from 'firebase/firestore';
 import { Article, Medicine } from '../types';
-import { Plus, FileText, Trash2, Eye, XCircle, Clock, QrCode } from 'lucide-react';
+import { Plus, FileText, Trash2, Eye, XCircle, Clock, QrCode, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import MDEditor from '@uiw/react-md-editor';
@@ -14,6 +14,7 @@ export default function Articles() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [showAddArt, setShowAddArt] = useState(false);
+  const [editingArt, setEditingArt] = useState<Article | null>(null);
   const [showQrArt, setShowQrArt] = useState<Article | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string>('');
   const [newArt, setNewArt] = useState({ 
@@ -24,6 +25,22 @@ export default function Articles() {
     videoUrl: '', 
     status: 'public' as 'public' | 'private' 
   });
+
+  useEffect(() => {
+    if (editingArt) {
+      setNewArt({
+        title: editingArt.title,
+        content: editingArt.content,
+        medicineId: editingArt.medicineId || '',
+        imageUrl: editingArt.imageUrl || '',
+        videoUrl: editingArt.videoUrl || '',
+        status: editingArt.status
+      });
+      setShowAddArt(true);
+    } else {
+      setNewArt({ title: '', content: '', medicineId: '', imageUrl: '', videoUrl: '', status: 'public' });
+    }
+  }, [editingArt]);
 
   useEffect(() => {
     if (showQrArt) {
@@ -58,18 +75,19 @@ export default function Articles() {
   const handleCreateArt = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const artId = newArt.medicineId || Math.random().toString(36).substring(2, 15);
+      const artId = editingArt ? editingArt.id : (newArt.medicineId || Math.random().toString(36).substring(2, 15));
       const artData: Article = {
         id: artId,
         ...newArt,
-        authorUid: user!.uid,
-        createdAt: serverTimestamp()
+        authorUid: editingArt ? editingArt.authorUid : user!.uid,
+        createdAt: editingArt ? editingArt.createdAt : serverTimestamp()
       };
       await setDoc(doc(db, 'articles', artId), artData);
       setShowAddArt(false);
+      setEditingArt(null);
       setNewArt({ title: '', content: '', medicineId: '', imageUrl: '', videoUrl: '', status: 'public' });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'articles');
+      handleFirestoreError(error, editingArt ? OperationType.UPDATE : OperationType.CREATE, 'articles');
     }
   };
 
@@ -102,7 +120,7 @@ export default function Articles() {
           <p className="text-slate-500">Create and manage safety guidelines for your products.</p>
         </div>
         <button 
-          onClick={() => setShowAddArt(true)}
+          onClick={() => { setEditingArt(null); setShowAddArt(true); }}
           className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-100 w-full md:w-auto"
         >
           <Plus size={20} /> New Article
@@ -117,13 +135,16 @@ export default function Articles() {
                 <FileText size={24} />
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setShowQrArt(art)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all">
+                <button onClick={() => setShowQrArt(art)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all" title="QR Code">
                   <QrCode size={18} />
                 </button>
-                <Link to={`/article/${art.id}`} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all">
+                <button onClick={() => setEditingArt(art)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all" title="Edit">
+                  <Pencil size={18} />
+                </button>
+                <Link to={`/article/${art.id}`} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all" title="View">
                   <Eye size={18} />
                 </Link>
-                <button onClick={() => deleteArt(art.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                <button onClick={() => deleteArt(art.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Delete">
                   <Trash2 size={18} />
                 </button>
               </div>
@@ -168,9 +189,9 @@ export default function Articles() {
       <AnimatePresence>
         {showAddArt && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddArt(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setShowAddArt(false); setEditingArt(null); }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-6">Create New Article</h2>
+              <h2 className="text-2xl font-bold mb-6">{editingArt ? 'Edit Article' : 'Create New Article'}</h2>
               <form onSubmit={handleCreateArt} className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider">Title</label>
@@ -178,12 +199,13 @@ export default function Articles() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider">Link to Medicine (Optional)</label>
-                  <select value={newArt.medicineId} onChange={e => setNewArt({...newArt, medicineId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all">
+                  <select value={newArt.medicineId} onChange={e => setNewArt({...newArt, medicineId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-violet-500 outline-none transition-all" disabled={!!editingArt}>
                     <option value="">None (Standalone Article)</option>
                     {medicines.map(m => (
                       <option key={m.id} value={m.id}>{m.name} ({m.batchNumber})</option>
                     ))}
                   </select>
+                  {editingArt && <p className="text-[10px] text-slate-400 mt-1">Medicine link cannot be changed after creation.</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider">Content (Markdown Supported)</label>
@@ -208,14 +230,17 @@ export default function Articles() {
                   </div>
                 </div>
                 <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => setShowAddArt(false)} className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all">Cancel</button>
-                  <button type="submit" className="flex-1 py-3 px-4 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-700 transition-all shadow-lg shadow-violet-100">Publish Article</button>
+                  <button type="button" onClick={() => { setShowAddArt(false); setEditingArt(null); }} className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all">Cancel</button>
+                  <button type="submit" className="flex-1 py-3 px-4 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-700 transition-all shadow-lg shadow-violet-100">
+                    {editingArt ? 'Update Article' : 'Publish Article'}
+                  </button>
                 </div>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }
