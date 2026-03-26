@@ -68,8 +68,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isAuthenticated() && isOwner(userId) && 
-                      request.resource.data.role == 'manufacturer' && 
-                      request.resource.data.status == 'pending' &&
+                      ((request.resource.data.role == 'manufacturer' && request.resource.data.status == 'pending') || 
+                       (request.resource.data.role == 'admin' && request.resource.data.status == 'approved' && isAdmin())) &&
                       isValidUser(request.resource.data);
       allow update: if isAdmin() || (isOwner(userId) && 
                       request.resource.data.role == resource.data.role &&

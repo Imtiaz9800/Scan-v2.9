@@ -26,6 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingUserCount, setPendingUserCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -58,7 +59,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             await setDoc(userDocRef, newUser);
             setUser(newUser);
           }
-        } catch (error) {
+        } catch (error: any) {
+          console.error('Auth sync error:', error);
+          setError(error.message || 'Failed to sync user profile');
           handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
         }
       } else {
@@ -84,10 +87,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const signIn = async () => {
+    setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in error:', error);
+      if (error.code === 'auth/popup-blocked') {
+        setError('Login popup was blocked by your browser. Please allow popups for this site.');
+      } else if (error.code === 'auth/unauthorized-domain') {
+        setError('This domain is not authorized for login. Please add ' + window.location.hostname + ' to your Firebase authorized domains.');
+      } else {
+        setError(error.message || 'Login failed. Please try again.');
+      }
     }
   };
 
@@ -131,16 +142,32 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </div>
                   <span className="text-2xl font-bold tracking-tight text-slate-900">Scan<span className="text-violet-600">Rx</span></span>
                 </Link>
-                <button
-                  onClick={signIn}
-                  className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-md hover:shadow-violet-200 active:scale-95"
-                >
-                  Professional Login
-                </button>
+                <div className="flex items-center gap-4">
+                  {error && (
+                    <div className="hidden md:block text-xs text-red-500 bg-red-50 px-3 py-1 rounded-lg border border-red-100 max-w-xs truncate">
+                      {error}
+                    </div>
+                  )}
+                  <button
+                    onClick={signIn}
+                    className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-md hover:shadow-violet-200 active:scale-95"
+                  >
+                    Professional Login
+                  </button>
+                </div>
               </div>
             </div>
           </nav>
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 md:hidden">
+                <X className="shrink-0" size={20} />
+                <p className="text-sm font-medium">{error}</p>
+                <button onClick={() => setError(null)} className="ml-auto">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
             {children}
           </main>
           <footer className="bg-white border-t border-slate-200 py-12 mt-auto">
